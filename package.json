@@ -1,0 +1,48 @@
+{
+  "name": "metrics-proxy",
+  "version": "1.0.0",
+  "description": "Simple server to split kubernetes custom metrics to multiple metrics servers.",
+  "main": "src/index.ts",
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "scripts": {
+    "start": "nodemon -L",
+    "build": "tsc",
+    "lint": "eslint 'src/**/*.{ts,js}' '*.js'",
+    "tsc": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git"
+  },
+  "author": "Wei Kin Huang",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "compression": "^1.7.4",
+    "express": "^4.17.1",
+    "http-errors": "^1.7.3",
+    "morgan": "^1.9.1",
+    "source-map-support": "^0.5.13",
+    "tslib": "^1.10.0",
+    "winston": "^3.2.1"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.0.1",
+    "@types/express": "^4.17.1",
+    "@types/http-errors": "^1.6.2",
+    "@types/morgan": "^1.7.37",
+    "@types/node": "^12.7.12",
+    "@typescript-eslint/eslint-plugin": "^2.3.2",
+    "@typescript-eslint/parser": "^2.3.3",
+    "eslint": "^6.5.1",
+    "eslint-config-prettier": "^6.4.0",
+    "eslint-plugin-node": "^10.0.0",
+    "husky": "^3.0.8",
+    "lint-staged": "^9.4.2",
+    "nodemon": "^1.19.3",
+    "prettier": "^1.18.2",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.4"
+  }
+}

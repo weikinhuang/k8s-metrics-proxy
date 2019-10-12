@@ -1,0 +1,72 @@
+stages:
+  - lint
+  - build
+  - deploy
+
+variables:
+  HUSKY_SKIP_INSTALL: "true"
+
+before_script:
+  # start: fix gitlab-ci's umask 0000 issue
+  - umask 0022
+  - find . ! -path . ! -path './.git' ! -path './.git/*' -exec chmod go-w {} +
+  # end: fix gitlab-ci's umask 0000 issue
+
+eslint:
+  stage: lint
+  image: node:12-alpine
+  cache:
+    paths:
+      - node_modules/
+  script:
+    - npm ci --quiet >/dev/null
+    - npm run -s lint
+    - npm run -s tsc
+  tags:
+    - docker
+
+.build-src-template: &build-src-template
+  stage: build
+  image: node:12-alpine
+  cache:
+    paths:
+      - node_modules/
+  script:
+    - rm -rf _src/ || true
+    - npm ci --quiet >/dev/null
+    - env NODE_ENV=production npm run -s build
+  tags:
+    - docker
+
+build-src-test:
+  <<: *build-src-template
+  except:
+    - master
+    - tags
+
+build-src-dist:
+  <<: *build-src-template
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - _src
+  only:
+    - master
+    - tags
+
+deploy-image:
+  stage: deploy
+  image: $CI_REGISTRY/buildtools/oci-build:latest
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - "export APP_VERSION=$(cat package.json | jq .version -r)"
+    - "export APP_VERSION_MINOR=$(echo $APP_VERSION | cut -d'.' -f 1-2)"
+    - "export APP_VERSION_MAJOR=$(echo $APP_VERSION | cut -d'.' -f 1)"
+    - |
+      build \
+        --latest master \
+        --name $CI_REGISTRY_IMAGE \
+        --tag "${CI_COMMIT_REF_NAME},${CI_COMMIT_SHA},${CI_COMMIT_SHA}-${CI_JOB_ID},${APP_VERSION},${APP_VERSION_MINOR},${APP_VERSION_MAJOR}"
+  only:
+    - master
+    - tags

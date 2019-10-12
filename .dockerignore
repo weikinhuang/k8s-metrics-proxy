@@ -1,0 +1,6 @@
+*
+
+!container
+!package.json
+!package-lock.json
+!_src
