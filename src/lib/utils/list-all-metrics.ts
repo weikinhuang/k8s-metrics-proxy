@@ -1,5 +1,6 @@
 import { Request } from 'express';
 import { get } from 'https';
+import * as querystring from 'querystring';
 import { certFile, certKey, metricsServers } from '../config';
 import { IncomingHttpHeaders } from 'http';
 
@@ -26,10 +27,16 @@ export interface MetricsProvider {
   pathMatch: string;
 }
 
-function listMetricsFromServer(headers: IncomingHttpHeaders, provider: MetricsProvider): Promise<V1APIResourceList> {
+function listMetricsFromServer(
+  qs: string,
+  headers: IncomingHttpHeaders,
+  provider: MetricsProvider,
+): Promise<V1APIResourceList> {
   return new Promise<V1APIResourceList>((resolve, reject) => {
     get(
-      `https://${provider.serviceName}.${provider.serviceNamespace}.svc.cluster.local:${provider.targetPort}/apis/custom.metrics.k8s.io/v1beta1`,
+      `https://${provider.serviceName}.${provider.serviceNamespace}.svc.cluster.local:${
+        provider.targetPort
+      }/apis/custom.metrics.k8s.io/v1beta1${qs ? `?${qs}` : ''}`,
       {
         headers,
         rejectUnauthorized: false,
@@ -67,8 +74,13 @@ function extractMetricsResources(data: V1APIResourceList | null): V1APIResource[
 export async function listAllMetrics(req: Request): Promise<any> {
   const resources: V1APIResource[] = [];
 
+  let qs = '';
+  if (req.query && Object.keys(req.query).length > 0) {
+    qs = querystring.stringify(req.query);
+  }
+
   const metrics = metricsServers.map((provider) => {
-    return listMetricsFromServer({ ...req.headers }, provider).catch(() => {
+    return listMetricsFromServer(qs, { ...req.headers }, provider).catch(() => {
       return null;
     });
   });
