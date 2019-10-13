@@ -1,0 +1,23 @@
+{{- if .Values.installAPIService }}
+apiVersion: apiregistration.k8s.io/v1beta1
+kind: APIService
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.Version | quote }}
+    app.kubernetes.io/component: metrics-proxy
+    app.kubernetes.io/part-of: {{ .Chart.Name | quote }}
+    app.kubernetes.io/managed-by: helm
+  name: v1beta1.custom.metrics.k8s.io
+spec:
+  group: custom.metrics.k8s.io
+  groupPriorityMinimum: 100
+  insecureSkipTLSVerify: true
+  service:
+    name: {{ .Release.Name }}
+    namespace: {{ .Release.Namespace }}
+  version: v1beta1
+  versionPriority: 100
+{{- end }}
+---

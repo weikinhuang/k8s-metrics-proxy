@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.Version | quote }}
+    app.kubernetes.io/component: metrics-proxy
+    app.kubernetes.io/part-of: {{ .Chart.Name | quote }}
+    app.kubernetes.io/managed-by: helm
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    rollingUpdate:
+      maxSurge: 10%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name | quote }}
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
+      app.kubernetes.io/component: metrics-proxy
+      app.kubernetes.io/part-of: {{ .Chart.Name | quote }}
+      app.kubernetes.io/managed-by: helm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        app.kubernetes.io/component: metrics-proxy
+        app.kubernetes.io/part-of: {{ .Chart.Name | quote }}
+        app.kubernetes.io/managed-by: helm
+      annotations:
+        checksum/haproxy-config: {{ include (print $.Template.BasePath "/config-configmap.yaml") . | sha256sum | quote }}
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      containers:
+      - name: proxy
+        image: {{ .Values.haproxyImage }}
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: https
+          containerPort: 8443
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+            scheme: HTTP
+        resources:
+          limits:
+            memory: 128Mi
+          requests:
+            memory: 16Mi
+        securityContext:
+          capabilities:
+            drop:
+              - all
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        volumeMounts:
+          - mountPath: /usr/local/etc/haproxy/haproxy.cfg
+            name: config
+            subPath: haproxy.cfg
+            readOnly: true
+          - mountPath: /usr/local/etc/haproxy/verify.http
+            name: config
+            subPath: verify.http
+            readOnly: true
+          - mountPath: /etc/ssl/haproxy
+            name: ssl-certs
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+
+      - name: metrics-proxy
+        image: {{ .Values.proxyImage }}
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+            scheme: HTTP
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 16Mi
+        securityContext:
+          capabilities:
+            drop:
+              - all
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        volumeMounts:
+          - mountPath: /config/servers.json
+            name: config
+            subPath: servers.json
+            readOnly: true
+          - mountPath: /config/server.pem
+            name: ssl-certs
+            subPath: server.pem
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-config
+            items:
+              - key: haproxy.cfg
+                path: haproxy.cfg
+                mode: 0644
+              - key: servers.json
+                path: servers.json
+                mode: 0644
+        - name: ssl-certs
+          secret:
+            secretName: {{ .Values.secrets.cert.name }}
+            items:
+              - key:  {{ .Values.secrets.cert.key | quote }}
+                path: server.pem
+                mode: 0644

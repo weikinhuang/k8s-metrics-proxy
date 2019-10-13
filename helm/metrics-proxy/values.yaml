@@ -1,0 +1,30 @@
+# kubectl get apiservices.apiregistration.k8s.io
+# kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq
+# kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/revisions.serving.knative.dev/autoscale-go-rwlpb/concurrency" | jq
+
+haproxyImage: haproxy:2.0-alpine
+proxyImage: metrics-proxy:1.0.1
+
+installAPIService: true
+
+secrets:
+  cert:
+    name: metrics-proxy-cert
+    key: server.pem
+
+# kubectl create secret generic metrics-proxy-cert -n monitoring --dry-run -o yaml \
+#   --from-literal=server.pem="$(\
+#     cat \
+#       metrics-proxy.pem \
+#       metrics-proxy-key.pem \
+#   )" \
+#     | kubectl apply -f -
+
+defaultMetricsServer: ""
+
+metricsServers:
+  # - name: ""
+  #   serviceName: ""
+  #   serviceNamespace: ""
+  #   targetPort: ""
+  #   pathMatch: ""
