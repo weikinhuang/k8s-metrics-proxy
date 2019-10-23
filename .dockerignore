@@ -1,5 +1,6 @@
 *
 
+!.npmrc
 !container
 !package.json
 !package-lock.json

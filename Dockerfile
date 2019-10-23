@@ -4,7 +4,7 @@ FROM node:12-alpine as npminstall
 # generate the node_modules directory
 ARG NODE_ENV=production
 ENV NODE_ENV          $NODE_ENV
-COPY /package.json /package-lock.json /tmp/
+COPY /package.json /package-lock.json /.npmrc /tmp/
 RUN set -xeuo pipefail \
     && export USER=root \
     && export HOME=/root \
@@ -20,6 +20,7 @@ RUN set -xeuo pipefail \
         /tmp/package.json \
         /tmp/package-lock.json \
         /tmp/.npm \
+        /tmp/.npmrc \
         /tmp/.npm-tmp
 
 FROM node:12-alpine
