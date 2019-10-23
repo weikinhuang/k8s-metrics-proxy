@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import k8s from '@kubernetes-tools/node-kubernetes-protobuf-parser';
 import { listAllMetrics } from '../../utils/list-all-metrics';
 import { HEALTHCHECK_UA } from '../../config';
 
@@ -20,10 +21,21 @@ router.get('/apis/custom.metrics.k8s.io/v1beta1', async (req: Request, res: Resp
     res.status(200).json({});
     return;
   }
+  const accept = (req.get('accept') || '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
   try {
     const stats = await listAllMetrics(req);
     res.setHeader('Cache-Control', 'no-cache, private');
-    res.status(200).json(stats);
+    res.status(200);
+    if (accept.includes('application/vnd.kubernetes.protobuf')) {
+      res.setHeader('Content-Type', 'application/vnd.kubernetes.protobuf');
+      res.write(k8s.encodeMessage(k8s.io.apimachinery.pkg.apis.meta.v1.APIResourceList, stats));
+      res.end();
+    } else {
+      res.json(stats);
+    }
   } catch (e) {
     next(e);
   }

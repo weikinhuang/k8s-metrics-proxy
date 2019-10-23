@@ -1,5 +1,6 @@
 import { Request } from 'express';
 import { get } from 'https';
+import k8s from '@kubernetes-tools/node-kubernetes-protobuf-parser';
 import * as querystring from 'querystring';
 import { certFile, certKey, metricsServers } from '../config';
 import { IncomingHttpHeaders } from 'http';
@@ -27,6 +28,28 @@ export interface MetricsProvider {
   pathMatch: string;
 }
 
+async function decodeJson(data: string): Promise<V1APIResourceList> {
+  return JSON.parse(data);
+}
+
+async function decodeProtobuf(data: Buffer): Promise<V1APIResourceList> {
+  const unknown = k8s.decodeMessage(data);
+  const res = k8s.io.apimachinery.pkg.apis.meta.v1.APIResourceList.decode(unknown.raw);
+  return {
+    ...res.toJSON(),
+    ...unknown.typeMeta,
+  } as V1APIResourceList;
+}
+
+async function decode(contentType: string, data: Buffer): Promise<V1APIResourceList> {
+  if (contentType === 'application/vnd.kubernetes.protobuf') {
+    return await decodeProtobuf(data);
+  } else if (contentType === 'application/json') {
+    return await decodeJson(data.toString('utf8'));
+  }
+  throw new Error('Unknown content type');
+}
+
 function listMetricsFromServer(
   qs: string,
   headers: IncomingHttpHeaders,
@@ -38,18 +61,22 @@ function listMetricsFromServer(
         provider.targetPort
       }/apis/custom.metrics.k8s.io/v1beta1${qs ? `?${qs}` : ''}`,
       {
-        headers,
+        headers: {
+          ...headers,
+          // Accept: 'application/vnd.kubernetes.protobuf',
+          // Accept: 'application/json',
+        },
         rejectUnauthorized: false,
         cert: certFile,
         key: certKey,
       },
       (res) => {
-        let data = '';
-        res.on('data', (s) => (data += s));
+        const data: Buffer[] = [];
+        res.on('data', (s) => data.push(s));
         res.on('error', reject);
-        res.on('end', () => {
+        res.on('end', async () => {
           try {
-            const r = JSON.parse(data);
+            const r = await decode(res.headers['content-type'] || '', Buffer.concat(data));
             if (res.statusCode === 200) {
               resolve(r);
             } else {
