@@ -158,7 +158,7 @@ data:
       use_backend default_backend      if { path /apis/custom.metrics.k8s.io/v1beta1 }
       use_backend default_backend      if { path /apis/custom.metrics.k8s.io }
       use_backend default_backend      if { path /apis }
-      use_backend default_backend      if { path /openapi }
+      use_backend default_backend      if { path_beg /openapi }
       use_backend default_backend      if { path /healthz }
 
       {{ range $server := .Values.metricsServers }}
