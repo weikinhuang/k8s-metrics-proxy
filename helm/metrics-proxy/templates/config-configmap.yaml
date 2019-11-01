@@ -154,8 +154,12 @@ data:
       # http-request replace-uri (.*)/apis/foo.metrics.k8s.io/(.*) \1/apis/custom.metrics.k8s.io/\2
 
       # this is the verify request
+      use_backend default_backend      if { path /apis/custom.metrics.k8s.io/v1beta2 }
       use_backend default_backend      if { path /apis/custom.metrics.k8s.io/v1beta1 }
-      use_backend default_backend      if { path /openapi/v2 }
+      use_backend default_backend      if { path /apis/custom.metrics.k8s.io }
+      use_backend default_backend      if { path /apis }
+      use_backend default_backend      if { path /openapi }
+      use_backend default_backend      if { path /healthz }
 
       {{ range $server := .Values.metricsServers }}
       use_backend {{ $server.name }}.backend      if TRUE {{ if $server.pathMatch }}{ path_reg {{ $server.pathMatch }} } {{end}}

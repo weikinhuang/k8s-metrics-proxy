@@ -3,6 +3,7 @@ import { notFound } from './error-handler';
 
 // routes
 import healthcheckRoute from './healthcheck-handler';
+import openapiRoute from './openapi-handler';
 import metricsRoute from './metrics-handler';
 
 export default function(): Router {
@@ -19,8 +20,11 @@ export default function(): Router {
   // healthcheck
   router.use('/healthz', healthcheckRoute);
 
+  // openapi spec
+  router.use('/openapi', openapiRoute);
+
   // prometheus stats
-  router.use('/', metricsRoute);
+  router.use('/apis', metricsRoute);
 
   // catch 404 and forward to error handler
   router.use(notFound);
