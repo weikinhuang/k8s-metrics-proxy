@@ -5,10 +5,10 @@ FROM node:12-alpine as npminstall
 ARG NODE_ENV=production
 ENV NODE_ENV          $NODE_ENV
 COPY /package.json /package-lock.json /.npmrc /tmp/
-RUN set -xeuo pipefail \
+WORKDIR /tmp
+RUN set -ex \
     && export USER=root \
     && export HOME=/root \
-    && cd /tmp \
     && mkdir -p \
         /tmp/.npm \
         /tmp/.npm-tmp \
@@ -26,7 +26,7 @@ RUN set -xeuo pipefail \
 FROM node:12-alpine
 
 # Install core libs
-RUN set -xeuo pipefail \
+RUN set -ex \
     && apk add --no-cache \
         --repository http://nl.alpinelinux.org/alpine/edge/main \
         --repository http://nl.alpinelinux.org/alpine/edge/community \
@@ -39,7 +39,7 @@ ENV APP_ROOT          /opt/app
 ENV CONFIG_ROOT       /config
 
 # make app directory
-RUN set -xeuo pipefail \
+RUN set -ex \
     && mkdir -p \
         /config \
         $APP_ROOT
@@ -51,7 +51,7 @@ COPY /package.json /package-lock.json $APP_ROOT/
 COPY --from=npminstall /tmp/node_modules $APP_ROOT/node_modules
 
 # copy application
-COPY /_src $APP_ROOT/src
+COPY /dist $APP_ROOT/src
 
 LABEL   description="metrics-proxy: Simple server to split kubernetes custom metrics to multiple metrics servers." \
         maintainer="Wei Kin Huang"

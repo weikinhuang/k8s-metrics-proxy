@@ -1,7 +1,8 @@
 stages:
   - lint
   - build
-  - deploy
+  - image
+  - helm
 
 variables:
   HUSKY_SKIP_INSTALL: "true"
@@ -12,12 +13,27 @@ before_script:
   - find . ! -path . ! -path './.git' ! -path './.git/*' -exec chmod go-w {} +
   # end: fix gitlab-ci's umask 0000 issue
 
+hadolint:
+  stage: lint
+  image: $CI_REGISTRY/buildtools/common-lint:latest
+  script:
+    - hadolint Dockerfile
+
+helmlint:
+  stage: lint
+  image: $CI_REGISTRY/buildtools/kube-tools:latest
+  script:
+    - helm lint helm/metrics-proxy
+
+kubeval:
+  stage: lint
+  image: $CI_REGISTRY/buildtools/kube-tools:latest
+  script:
+    - helm template --namespace test -n test helm/metrics-proxy | kubeval --strict
+
 eslint:
   stage: lint
   image: node:12-alpine
-  cache:
-    paths:
-      - node_modules/
   script:
     - npm ci --quiet >/dev/null
     - npm run -s lint
@@ -28,11 +44,8 @@ eslint:
 .build-src-template: &build-src-template
   stage: build
   image: node:12-alpine
-  cache:
-    paths:
-      - node_modules/
   script:
-    - rm -rf _src/ || true
+    - rm -rf dist/ || true
     - npm ci --quiet >/dev/null
     - env NODE_ENV=production npm run -s build
   tags:
@@ -41,7 +54,6 @@ eslint:
 build-src-test:
   <<: *build-src-template
   except:
-    - master
     - tags
 
 build-src-dist:
@@ -49,13 +61,12 @@ build-src-dist:
   artifacts:
     expire_in: 1 week
     paths:
-      - _src
+      - dist
   only:
-    - master
     - tags
 
-deploy-image:
-  stage: deploy
+build-image:
+  stage: image
   image: $CI_REGISTRY/buildtools/oci-build:latest
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
@@ -64,9 +75,16 @@ deploy-image:
     - "export APP_VERSION_MAJOR=$(echo $APP_VERSION | cut -d'.' -f 1)"
     - |
       build \
-        --latest master \
+        --latest ${CI_COMMIT_REF_NAME} \
         --name $CI_REGISTRY_IMAGE \
         --tag "${CI_COMMIT_REF_NAME},${CI_COMMIT_SHA},${CI_COMMIT_SHA}-${CI_JOB_ID},${APP_VERSION},${APP_VERSION_MINOR},${APP_VERSION_MAJOR}"
   only:
-    - master
+    - tags
+
+deploy-helm:
+  stage: helm
+  image: $CI_REGISTRY/buildtools/kube-tools:latest
+  script:
+    - helm-release helm/metrics-proxy
+  only:
     - tags

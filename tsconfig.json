@@ -5,7 +5,7 @@
     ],
     "target": "esnext",
     "module": "commonjs",
-    "outDir": "_src",
+    "outDir": "dist",
     "declaration": false,
     "strict": true,
     "noImplicitAny": false,
