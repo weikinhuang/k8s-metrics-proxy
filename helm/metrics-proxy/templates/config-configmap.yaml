@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: metrics-proxy
     app.kubernetes.io/part-of: {{ .Chart.Name | quote }}
     app.kubernetes.io/managed-by: helm
-  name: {{ .Release.Name }}-config
+  name: {{ printf "%s-%s" (include "metrics-proxy.fullname" .) "config" | trunc 63 | trimSuffix "-" }}
   namespace: {{ .Release.Namespace }}
 data:
   servers.json: |

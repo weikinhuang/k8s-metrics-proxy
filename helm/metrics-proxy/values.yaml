@@ -3,7 +3,7 @@
 # kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/revisions.serving.knative.dev/autoscale-go-rwlpb/concurrency" | jq
 
 haproxyImage: haproxy:2.0-alpine
-proxyImage: metrics-proxy:1.2.1
+proxyImage: metrics-proxy:12.0.0
 
 installAPIService: true
 

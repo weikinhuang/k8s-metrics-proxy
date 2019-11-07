@@ -8,8 +8,8 @@ metadata:
     app.kubernetes.io/component: metrics-proxy
     app.kubernetes.io/part-of: {{ .Chart.Name | quote }}
     app.kubernetes.io/managed-by: helm
-  name: {{ .Release.Name }}
-  namespace: {{ .Release.Namespace | quote }}
+  name: {{ include "metrics-proxy.fullname" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   revisionHistoryLimit: 5
@@ -142,7 +142,7 @@ spec:
             medium: Memory
         - name: config
           configMap:
-            name: {{ .Release.Name }}-config
+            name: {{ printf "%s-%s" (include "metrics-proxy.fullname" .) "config" | trunc 63 | trimSuffix "-" }}
             items:
               - key: haproxy.cfg
                 path: haproxy.cfg
@@ -154,6 +154,6 @@ spec:
           secret:
             secretName: {{ .Values.secrets.cert.name }}
             items:
-              - key:  {{ .Values.secrets.cert.key | quote }}
+              - key:  {{ .Values.secrets.cert.key }}
                 path: server.pem
                 mode: 0644
