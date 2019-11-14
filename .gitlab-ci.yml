@@ -29,7 +29,7 @@ kubeval:
   stage: lint
   image: $CI_REGISTRY/buildtools/kube-tools:latest
   script:
-    - helm template --namespace test -n test helm/metrics-proxy | kubeval --strict
+    - helm template --namespace test --generate-name helm/metrics-proxy | kubeval --strict
 
 eslint:
   stage: lint
