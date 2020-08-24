@@ -1,5 +1,5 @@
 /* eslint-env node */
 
 module.exports = {
-  '*.{js,ts}': ['prettier --write', 'eslint', 'git add'],
+  '*.{js,ts}': ['prettier --write', 'eslint'],
 };

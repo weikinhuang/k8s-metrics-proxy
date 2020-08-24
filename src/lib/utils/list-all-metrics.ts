@@ -102,8 +102,8 @@ export async function listAllMetrics(req: Request): Promise<any> {
   const resources: V1APIResource[] = [];
 
   let qs = '';
-  if (req.query && Object.keys(req.query).length > 0) {
-    qs = querystring.stringify(req.query);
+  if (req.query && typeof req.query === 'object' && Object.keys(req.query).length > 0) {
+    qs = querystring.stringify((req.query as unknown) as Record<string, any>);
   }
 
   const metrics = metricsServers.map((provider) => {

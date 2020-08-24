@@ -6,7 +6,7 @@ import healthcheckRoute from './healthcheck-handler';
 import openapiRoute from './openapi-handler';
 import metricsRoute from './metrics-handler';
 
-export default function(): Router {
+export default function (): Router {
   const router = Router();
 
   // no cache for routes
@@ -23,7 +23,7 @@ export default function(): Router {
   // openapi spec
   router.use('/openapi', openapiRoute);
 
-  // prometheus stats
+  // metrics endpoints
   router.use('/apis', metricsRoute);
 
   // catch 404 and forward to error handler
