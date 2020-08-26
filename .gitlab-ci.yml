@@ -38,32 +38,9 @@ eslint:
     - npm ci --quiet >/dev/null
     - npm run -s lint
     - npm run -s tsc
-  tags:
-    - docker
-
-.build-src-template: &build-src-template
-  stage: build
-  image: node:12-alpine
-  script:
-    - rm -rf dist/ || true
-    - npm ci --quiet >/dev/null
     - env NODE_ENV=production npm run -s build
   tags:
     - docker
-
-build-src-test:
-  <<: *build-src-template
-  except:
-    - tags
-
-build-src-dist:
-  <<: *build-src-template
-  artifacts:
-    expire_in: 1 week
-    paths:
-      - dist
-  only:
-    - tags
 
 build-image:
   stage: image
@@ -74,10 +51,14 @@ build-image:
     - "export APP_VERSION_MINOR=$(echo $APP_VERSION | cut -d'.' -f 1-2)"
     - "export APP_VERSION_MAJOR=$(echo $APP_VERSION | cut -d'.' -f 1)"
     - |
-      build \
-        --latest ${CI_COMMIT_REF_NAME} \
+      build --latest ${CI_COMMIT_REF_NAME} \
         --name $CI_REGISTRY_IMAGE \
-        --tag "${CI_COMMIT_REF_NAME},${CI_COMMIT_SHA},${CI_COMMIT_SHA}-${CI_JOB_ID},${APP_VERSION},${APP_VERSION_MINOR},${APP_VERSION_MAJOR}"
+        --tag "${CI_COMMIT_REF_NAME}" \
+        --tag "${CI_COMMIT_SHA}" \
+        --tag "${CI_COMMIT_SHA}-${CI_JOB_ID}" \
+        --tag "${APP_VERSION}" \
+        --tag "${APP_VERSION_MINOR}" \
+        --tag "${APP_VERSION_MAJOR}"
   only:
     - tags
 

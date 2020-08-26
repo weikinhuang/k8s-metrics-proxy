@@ -1,61 +1,69 @@
-# install node_modules in a separate container
-FROM node:12-alpine as npminstall
+# build and test application
+FROM node:14-buster-slim as compile
 
-# generate the node_modules directory
-ARG NODE_ENV=production
-ENV NODE_ENV          $NODE_ENV
-COPY /package.json /package-lock.json /.npmrc /tmp/
+ENV NODE_ENV=development
+
 WORKDIR /tmp
+COPY .npmrc package.json package-lock.json /tmp/
 RUN set -ex \
-    && export USER=root \
-    && export HOME=/root \
-    && mkdir -p \
-        /tmp/.npm \
-        /tmp/.npm-tmp \
-    && npm config set unsafe-perm true \
-    && npm config set cache /tmp/.npm --global\
-    && npm config set tmp /tmp/.npm-tmp --global \
-    && npm ci --quiet \
-    && rm -rf \
-        /tmp/package.json \
-        /tmp/package-lock.json \
-        /tmp/.npm \
-        /tmp/.npmrc \
-        /tmp/.npm-tmp
+    && npm ci
 
-FROM node:12-alpine
+COPY . /tmp/
+RUN set -ex \
+    && npm run lint \
+    && npm run test \
+    && npm run build \
+    && ( find . -name '__mocks__' -exec rm -rf {} \; || true ) \
+    && ( find . -name '*.spec.js' -exec rm -rf {} \; || true ) \
+    && find . -name '*.ts' -exec rm -rf {} \;
+
+# install node modules
+FROM node:14-buster-slim as nodemodules
+
+WORKDIR /tmp
+COPY .npmrc package.json package-lock.json /tmp/
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+RUN set -ex \
+    && npm ci
+
+# final build
+FROM debian:buster-slim as dist
 
 # Install core libs
-RUN set -ex \
-    && apk add --no-cache \
-        --repository http://nl.alpinelinux.org/alpine/edge/main \
-        --repository http://nl.alpinelinux.org/alpine/edge/community \
-            ca-certificates \
-            curl \
-            tini
+RUN set -eux \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        tini \
+    && apt-get purge -y --auto-remove \
+    && rm -rf /var/lib/apt/lists/*
+
+# install node from the node image
+COPY --from=nodemodules /usr/local/bin/node /usr/local/bin/node
 
 # app variables
 ENV APP_ROOT          /opt/app
-ENV CONFIG_ROOT       /config
 
 # make app directory
-RUN set -ex \
+RUN set -xeu \
     && mkdir -p \
-        /config \
         $APP_ROOT
 
 # generate the node_modules directory
 ARG NODE_ENV=production
 ENV NODE_ENV          $NODE_ENV
 COPY /package.json /package-lock.json $APP_ROOT/
-COPY --from=npminstall /tmp/node_modules $APP_ROOT/node_modules
+COPY --from=nodemodules /tmp/node_modules $APP_ROOT/node_modules
 
 # copy application
-COPY /dist $APP_ROOT/src
+COPY --from=compile /tmp/dist $APP_ROOT/src
+
+WORKDIR $APP_ROOT
 
 LABEL   description="metrics-proxy: Simple server to split kubernetes custom metrics to multiple metrics servers." \
         maintainer="Wei Kin Huang"
 
 # boot up the application
-WORKDIR $APP_ROOT
-CMD [ "tini", "--", "node", "/opt/app/src/index.js" ]
+ENTRYPOINT ["tini", "-s", "-g", "--"]
+CMD ["node", "--no-deprecation", "--enable-source-maps", "/opt/app/src/index.js"]

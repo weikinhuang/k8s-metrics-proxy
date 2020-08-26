@@ -1,7 +1,12 @@
 *
 
 !.npmrc
+!.eslintignore
+!.eslintrc.js
 !container
-!package.json
+!jest.config.js
 !package-lock.json
-!dist
+!package.json
+!src
+!tsconfig.json
+!LICENSE
